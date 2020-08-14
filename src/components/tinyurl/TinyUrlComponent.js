@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import {tinyUrl} from "../../services/tinyurl/tinyurl";
+import { Link } from "react-router-dom";
+import {tinyUrl, aLinks} from "../../services/tinyurl/tinyurl";
 import "./TinyUrlComponent.css";
 import logo from '../../assets/images/logo/logo.svg';
 import $ from "jquery";
@@ -14,8 +15,31 @@ function TinyUrlComponent() {
         error: "",
         success: false,
         hash: "",
-        public: 1
+        public: 1,
+        alink: null
     });
+
+    const [allurl, setallurl] = useState({
+        alink: null,
+        loading: false,
+    });
+
+    useEffect(() => {
+    	fetchALinks();
+    }, [])
+
+    const fetchALinks = () => {
+    	aLinks().then(data => {
+    		if (data.error) {
+                setallurl({ ...allurl, loading: false});
+            } else {
+                setallurl({ ...allurl, alink: data.links, loading: false});
+            }
+    	})
+    	.catch(err => {
+           	setallurl({ ...allurl, loading: false, error: "Please Check Your Internet Connectivity"});
+        })
+    }
 
     const handlechange = name => event => {
         setLink({ ...link, [name]: event.target.value });
@@ -33,16 +57,37 @@ function TinyUrlComponent() {
         return link.error && <p className="text-center text-danger font-weight-bold">{link.error}</p>
     }
 
-    const onSubmit = event => {
+    const contestCard = (contest) => {
+        let linktocontest = process.env.REACT_APP_LINK + "/" + contest.hash;
+        return (
+            <div className="card mb-4" key={contest._id}>
+                <div className="card-body">
+                    <div className="row">
+                        <div className="col-md-10"><span className="contest-name"><a href={linktocontest} target="_blank">{linktocontest}</a></span></div>
+                        <div className="col-md-2"><span className="contest-name float-right">{contest.count}</span></div>
+                        
+                    </div>
+
+
+                </div>
+            </div>
+        )
+    }
+
+    const allLinks = () => {
+    	return allurl.alink != null && allurl.alink.map(contestCard);
+    }
+
+    const onSubmit = (event) => {
         event.preventDefault();
-        link.loading = true;
-        setLink({ ...link, error: "" })
+        setLink({ ...link, error: "", loading: true })
         tinyUrl(link)
             .then(data => {
                 if (data.error) {
                     setLink({ ...link, loading: false, error: data.error.errors[0].msg })
                 } else {
                     setLink({ ...link, loading: false, error: "", success: true, hash: data.tinyurl })
+                    fetchALinks()
                     notify("success", "Link Created");
                 }
             })
@@ -55,7 +100,7 @@ function TinyUrlComponent() {
     return (
     < div className="row min-height-fix-footer mx-0" > 
         <div className="col-md-4 offset-md-4">
-            <h1 className="text-center mt-4">Shorten your link here</h1>
+            <h1 className="text-center mt-4">Shorten link here</h1>
             <div className="form-group">
                 <input type="text" className="form-control" onChange={handlechange("url")} name="url" placeholder="Enter Your Link Here"></input>
             </div>
@@ -71,8 +116,9 @@ function TinyUrlComponent() {
             {hashUrl()}
             {onLoading()}
             {errorMessage()}
+            <h1 className="text-center mt-5">Your active links</h1>
+            {allLinks()}
         </div>
-        {/* {JSON.stringify(link)} */}
     </ div>);
 }
 
